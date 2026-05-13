@@ -239,7 +239,7 @@ def _do_ai_move(board, difficulty):
     if difficulty == 'easy':
         move = get_easy_move(board)
     else:  # 'hard'
-        move = (board)
+        move = get_hard_move(board)
 
     if move is None:
         # Fallback: just switch turn (Safety measure in case AI is implemented incorrectly)
