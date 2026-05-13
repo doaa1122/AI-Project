@@ -75,11 +75,11 @@ class UI:
         bx = SIDEBAR_X
         # Grouped controls
         self.buttons = [
-            {'label': '🚶 Move Mode',    'action': 'mode_move',  'rect': pygame.Rect(bx, 280, 220, 40)},
-            {'label': '🧱 Wall Mode',    'action': 'mode_wall',  'rect': pygame.Rect(bx, 325, 220, 40)},
+            {'label': 'Move Mode',    'action': 'mode_move',  'rect': pygame.Rect(bx, 280, 220, 40)},
+            {'label': 'Wall Mode',    'action': 'mode_wall',  'rect': pygame.Rect(bx, 325, 220, 40)},
             {'label': 'Horizontal',      'action': 'orient_H',   'rect': pygame.Rect(bx, 370, 105, 35)},
             {'label': 'Vertical',        'action': 'orient_V',   'rect': pygame.Rect(bx + 115, 370, 105, 35)},
-            {'label': '🔄 Restart Game', 'action': 'reset',      'rect': pygame.Rect(bx, 540, 220, 45)},
+            {'label': 'Restart Game', 'action': 'reset',      'rect': pygame.Rect(bx, 565, 220, 45)},
         ]
 
     def draw_all(self, board, game_mode, mouse_pos):
