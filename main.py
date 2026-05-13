@@ -18,7 +18,7 @@ import time
 
 from board import Board
 from ui import UI, pixel_to_cell, pixel_to_wall_slot, WINDOW_W, WINDOW_H
-from ai import get_easy_move, get_medium_move
+from ai import get_easy_move, get_hard_move
 
 
 # -------------------------------------------------------------------------
@@ -27,7 +27,7 @@ from ai import get_easy_move, get_medium_move
 def show_menu(screen):
     """
     Show a simple startup menu to choose game mode and AI difficulty.
-    Returns: ('hvh', None), ('hvc', 'easy'), or ('hvc', 'medium')
+    Returns: ('hvh', None), ('hvc', 'easy'), or ('hvc', 'hard')
     """
     font_title  = pygame.font.SysFont('Segoe UI', 42, bold=True)
     font_option = pygame.font.SysFont('Segoe UI', 26)
@@ -44,9 +44,9 @@ def show_menu(screen):
 
     # List of buttons with their labels, return values, and rectangles for click detection
     buttons = [
-        {'label': 'Human vs Human',       'value': ('hvh', None),     'rect': pygame.Rect(WINDOW_W//2 - 180, 220, 360, 56)},
-        {'label': 'Human vs AI (Easy)',    'value': ('hvc', 'easy'),   'rect': pygame.Rect(WINDOW_W//2 - 180, 298, 360, 56)},
-        {'label': 'Human vs AI (Medium)',  'value': ('hvc', 'medium'), 'rect': pygame.Rect(WINDOW_W//2 - 180, 376, 360, 56)},
+        {'label': 'Human vs Human',       'value': ('hvh', None),     'rect': pygame.Rect(WINDOW_W//2 - 180, 250, 360, 56)},
+        {'label': 'Human vs AI (Easy)',    'value': ('hvc', 'easy'),   'rect': pygame.Rect(WINDOW_W//2 - 180, 328, 360, 56)},
+        {'label': 'Human vs AI (Hard)',    'value': ('hvc', 'hard'),   'rect': pygame.Rect(WINDOW_W//2 - 180, 405, 360, 56)},
     ]
 
     clock = pygame.time.Clock() # Create a clock to control the frame rate of the menu loop
@@ -66,7 +66,7 @@ def show_menu(screen):
         pygame.draw.line(screen, (50, 50, 70), (WINDOW_W//2 - 180, 163), (WINDOW_W//2 + 180, 163), 1)
 
         choose_lbl = font_option.render("Select Game Mode", True, TEXT_C)
-        screen.blit(choose_lbl, (WINDOW_W//2 - choose_lbl.get_width()//2, 173))
+        screen.blit(choose_lbl, (WINDOW_W//2 - choose_lbl.get_width()//2, 198))
 
         # Draw buttons
         for btn in buttons:
@@ -80,7 +80,7 @@ def show_menu(screen):
 
         # Footer note
         note = font_small.render("You play as Player 1 (Red) | AI plays as Player 2 (Blue)", True, DIM_C)
-        screen.blit(note, (WINDOW_W//2 - note.get_width()//2, 450))
+        screen.blit(note, (WINDOW_W//2 - note.get_width()//2, 525))
 
         pygame.display.flip() # Update the display with all the drawn elements
         clock.tick(60) # Limit the menu loop to 60 frames per second
@@ -106,7 +106,7 @@ def run_game(screen, game_mode, ai_difficulty):
     Parameters:
         screen       - pygame display surface
         game_mode    - 'hvh' (human vs human) or 'hvc' (human vs computer)
-        ai_difficulty- None, 'easy', or 'medium'
+        ai_difficulty- None, 'easy', or 'hard'
     """
     board = Board()
     ui    = UI(screen)
@@ -136,6 +136,7 @@ def run_game(screen, game_mode, ai_difficulty):
         if ai_thinking and current_time >= ai_think_timer:
             ai_thinking = False
             _do_ai_move(board, ai_difficulty)
+
 
         # ---------------------------------------------------------------
         # Events
@@ -237,8 +238,8 @@ def _do_ai_move(board, difficulty):
     """Ask the AI for a move and apply it to the board."""
     if difficulty == 'easy':
         move = get_easy_move(board)
-    else:
-        move = get_medium_move(board)
+    else:  # 'hard'
+        move = (board)
 
     if move is None:
         # Fallback: just switch turn (Safety measure in case AI is implemented incorrectly)

@@ -4,89 +4,220 @@ ai.py
 Contains the AI logic for the computer opponent.
 
 Easy AI:
-    - Just picks a random valid move (pawn move or wall placement).
+    - Moves toward the goal following the shortest path.
+    - 15% chance to place a valid random wall.
 
-Medium AI:
-    - Tries to move toward the goal first.
-    - Occasionally places a wall to slow down the human player.
-    - Falls back to random if nothing smart is available.
+Hard AI:
+    - Greedy evaluation: compares (Human_Path_Length - AI_Path_Length).
+    - Selects the action (move or wall) with the best immediate advantage.
 """
 
 import random
+from collections import deque
 from pathfinding import bfs_has_path
 
 
 def get_easy_move(board):
     """
-    Easy AI: randomly choose between moving the pawn or placing a wall.
-    If it has walls, there's a 30% chance it tries to place one randomly.
-    Otherwise just move the pawn.
+    Easy AI: Move along the actual shortest path to the goal using BFS.
+    15% chance to place a valid random wall if walls available.
     """
     player = board.current_player()
-
-    # Decide whether to try placing a wall
-    if player['walls'] > 0 and random.random() < 0.3:
-        wall_move = _random_wall(board)
+    
+    # 15% chance to try placing a wall
+    if player['walls'] > 0 and random.random() < 0.15:
+        wall_move = _find_blocking_wall(board)
         if wall_move:
             return ('wall', wall_move)
-
-    # Move pawn randomly
+    
+    # Get goal row for current player
+    goal_row = 8 if board.current_turn == 2 else 0
+    
+    # Find the first move in the shortest path using BFS
+    next_move = _get_first_move_in_shortest_path(
+        board,
+        player['row'],
+        player['col'],
+        goal_row
+    )
+    
+    if next_move:
+        return ('pawn', next_move)
+    
+    # Fallback: if no path found, try any valid move
     pawn_moves = board.get_valid_pawn_moves()
     if pawn_moves:
-        chosen = random.choice(pawn_moves)
-        return ('pawn', chosen)
-
+        return ('pawn', pawn_moves[0])
+    
     return None
 
 
-def get_medium_move(board):
+def get_hard_move(board):
     """
-    Medium AI:
-    1. Check if there's a pawn move that gets closer to the goal.
-    2. If the human is very close to winning, try to place a blocking wall.
-    3. Otherwise move toward goal, or random if nothing better.
+    Hard AI: Greedy evaluation of moves vs walls.
+    
+    Compare each option and select the action that maximizes:
+    (Human_Shortest_Path_Length - AI_Shortest_Path_Length)
     """
     player = board.current_player()
     opponent = board.other_player()
-
-    # Figure out goals
-    # AI is always player 2 (needs to reach row 8)
-    ai_goal_row = 8
-    human_goal_row = 0
-
-    # --- Try to block the human if they're close ---
-    human_row = opponent['row']
-    # If the human is within 2 rows of their goal, try placing a wall
-    if player['walls'] > 0 and human_row <= 2:
-        wall_move = _find_blocking_wall(board, opponent)
-        if wall_move:
-            return ('wall', wall_move)
-
-    # --- Move toward goal ---
+    
+    # Current state path lengths
+    ai_path_length = _get_shortest_path_length(
+        board,
+        player['row'],
+        player['col'],
+        8 if board.current_turn == 2 else 0
+    )
+    opponent_path_length = _get_shortest_path_length(
+        board,
+        opponent['row'],
+        opponent['col'],
+        0 if board.current_turn == 2 else 8
+    )
+    
+    current_advantage = opponent_path_length - ai_path_length
+    best_action = None
+    best_advantage = current_advantage
+    
+    # Evaluate pawn moves
     pawn_moves = board.get_valid_pawn_moves()
+    for move_r, move_c in pawn_moves:
+        # Simulate move
+        old_r, old_c = player['row'], player['col']
+        player['row'] = move_r
+        player['col'] = move_c
+        
+        new_ai_path = _get_shortest_path_length(
+            board,
+            move_r,
+            move_c,
+            8 if board.current_turn == 2 else 0
+        )
+        new_advantage = opponent_path_length - new_ai_path
+        
+        # Undo move
+        player['row'] = old_r
+        player['col'] = old_c
+        
+        if new_advantage > best_advantage:
+            best_advantage = new_advantage
+            best_action = ('pawn', (move_r, move_c))
+    
+    # Evaluate wall placements
+    if player['walls'] > 0:
+        walls_to_try = _get_walls_near_players(board, max_distance=3)
+        for row, col, direction in walls_to_try:
+            if not board.can_place_wall(row, col, direction):
+                continue
+            
+            # Simulate wall placement
+            new_edges = board._wall_edges(row, col, direction)
+            for edge in new_edges:
+                board.blocked_edges.add(edge)
+            
+            opponent_new_path = _get_shortest_path_length(
+                board,
+                opponent['row'],
+                opponent['col'],
+                0 if board.current_turn == 2 else 8
+            )
+            new_advantage = opponent_new_path - ai_path_length
+            
+            # Undo wall
+            for edge in new_edges:
+                board.blocked_edges.remove(edge)
+            
+            if new_advantage > best_advantage:
+                best_advantage = new_advantage
+                best_action = ('wall', (row, col, direction))
+    
+    # If we found a good action, use it; otherwise move toward goal
+    if best_action:
+        return best_action
+    
+    # Default: move toward goal
     if pawn_moves:
-        # Score each move: lower distance to goal is better
-        best_move = None
-        best_dist = abs(player['row'] - ai_goal_row) + 1  # current distance
-
-        for (r, c) in pawn_moves:
-            dist = abs(r - ai_goal_row)
-            if dist < best_dist:
-                best_dist = dist
-                best_move = (r, c)
-
-        if best_move:
-            return ('pawn', best_move)
-
-        # No move gets us closer — just pick a random pawn move
-        return ('pawn', random.choice(pawn_moves))
-
+        goal_row = 8 if board.current_turn == 2 else 0
+        best_move = min(pawn_moves, key=lambda m: abs(m[0] - goal_row))
+        return ('pawn', best_move)
+    
     return None
+
 
 
 # -------------------------------------------------------------------------
 # Helper functions
 # -------------------------------------------------------------------------
+
+def _get_shortest_path_length(board, start_row, start_col, goal_row):
+    """
+    Use BFS to find the shortest path length from start to goal_row.
+    Returns the distance (number of moves), or float('inf') if no path exists.
+    """
+    queue = deque([(start_row, start_col, 0)])  # (row, col, distance)
+    visited = {(start_row, start_col)}
+    
+    while queue:
+        row, col, dist = queue.popleft()
+        
+        if row == goal_row:
+            return dist
+        
+        for neighbor_r, neighbor_c in board.get_neighbors(row, col):
+            if (neighbor_r, neighbor_c) not in visited:
+                visited.add((neighbor_r, neighbor_c))
+                queue.append((neighbor_r, neighbor_c, dist + 1))
+    
+    return float('inf')
+
+
+def _get_first_move_in_shortest_path(board, start_row, start_col, goal_row):
+    """
+    Use BFS to find the first move along the shortest path to goal_row.
+    Returns (row, col) of the next cell in the shortest path, or None if no path exists.
+    
+    This ensures the AI can navigate around obstacles by moving along the actual
+    shortest path instead of greedily moving based on row distance alone.
+    """
+    # Get the current distance to the goal
+    current_distance = _get_shortest_path_length(board, start_row, start_col, goal_row)
+    
+    if current_distance == float('inf'):
+        return None
+    
+    # Check all valid neighbors and find one that's on the shortest path
+    # A neighbor is on the shortest path if its distance to goal = current_distance - 1
+    for neighbor_r, neighbor_c in board.get_neighbors(start_row, start_col):
+        neighbor_distance = _get_shortest_path_length(board, neighbor_r, neighbor_c, goal_row)
+        if neighbor_distance == current_distance - 1:
+            return (neighbor_r, neighbor_c)
+    
+    # Shouldn't reach here if current_distance is not infinity
+    return None
+
+
+def _get_walls_near_players(board, max_distance=3):
+    """
+    Return wall placements within max_distance cells of either player.
+    This optimization reduces the search space for wall evaluation.
+    """
+    p1 = board.player1
+    p2 = board.player2
+    candidate_walls = []
+    
+    for row in range(8):
+        for col in range(8):
+            for direction in ['H', 'V']:
+                # Check if wall is within max_distance of either player
+                p1_dist = abs(row - p1['row']) + abs(col - p1['col'])
+                p2_dist = abs(row - p2['row']) + abs(col - p2['col'])
+                
+                if p1_dist <= max_distance or p2_dist <= max_distance:
+                    candidate_walls.append((row, col, direction))
+    
+    return candidate_walls
+
 
 def _random_wall(board):
     """Try random wall placements until one is valid or give up after 30 tries."""
@@ -99,65 +230,59 @@ def _random_wall(board):
     return None
 
 
-def _find_blocking_wall(board, opponent):
+def _find_blocking_wall(board):
     """
-    Try to find a wall that increases the opponent's path length.
-    We test a few candidate positions near the opponent.
+    Try to find a wall that increases the opponent's path length to their goal.
+    This makes the easy AI's wall placement more strategic.
+    
+    Returns (row, col, direction) of a wall that blocks the opponent, or None.
     """
-    or_, oc = opponent['row'], opponent['col']
-    human_goal = 0  # Human (player 1) needs to reach row 0
-
-    # Get current opponent path length
-    current_dist = _bfs_distance(board, or_, oc, human_goal)
-
-    best_wall = None
-    best_increase = 0
-
-    # Try walls near the opponent's current position
-    for dr in range(-2, 3):
-        for dc in range(-2, 3):
-            wr, wc = or_ + dr, oc + dc
-            for direction in ['H', 'V']:
-                if board.can_place_wall(wr, wc, direction):
-                    # Temporarily place wall
-                    edges = board._wall_edges(wr, wc, direction)
-                    for e in edges:
-                        board.blocked_edges.add(e)
-
-                    # Measure new distance
-                    new_dist = _bfs_distance(board, or_, oc, human_goal)
-
-                    # Remove temporary wall
-                    for e in edges:
-                        board.blocked_edges.remove(e)
-
-                    increase = new_dist - current_dist
-                    if increase > best_increase:
-                        best_increase = increase
-                        best_wall = (wr, wc, direction)
-
-    return best_wall
-
-
-def _bfs_distance(board, start_row, start_col, goal_row):
-    """
-    BFS to find shortest path distance (in steps) from start to goal_row.
-    Returns a large number if unreachable.
-    """
-    from collections import deque
-
-    queue = deque()
-    queue.append((start_row, start_col, 0))
-    visited = set()
-    visited.add((start_row, start_col))
-
-    while queue:
-        row, col, dist = queue.popleft()
-        if row == goal_row:
-            return dist
-        for (nr, nc) in board.get_neighbors(row, col):
-            if (nr, nc) not in visited:
-                visited.add((nr, nc))
-                queue.append((nr, nc, dist + 1))
-
-    return 999  # unreachable
+    opponent = board.other_player()
+    opponent_goal = 0 if board.current_turn == 2 else 8
+    
+    # Get the opponent's current shortest path length
+    current_path_length = _get_shortest_path_length(
+        board,
+        opponent['row'],
+        opponent['col'],
+        opponent_goal
+    )
+    
+    # If opponent has no path, no point in placing walls
+    if current_path_length == float('inf'):
+        return None
+    
+    # Look for walls near the opponent
+    candidate_walls = _get_walls_near_players(board, max_distance=2)
+    
+    # Shuffle to randomize which blocking wall we pick
+    random.shuffle(candidate_walls)
+    
+    # Try to find a wall that increases the opponent's path length
+    for row, col, direction in candidate_walls:
+        if not board.can_place_wall(row, col, direction):
+            continue
+        
+        # Temporarily place the wall
+        new_edges = board._wall_edges(row, col, direction)
+        for edge in new_edges:
+            board.blocked_edges.add(edge)
+        
+        # Check the new path length
+        new_path_length = _get_shortest_path_length(
+            board,
+            opponent['row'],
+            opponent['col'],
+            opponent_goal
+        )
+        
+        # Remove the temporary wall
+        for edge in new_edges:
+            board.blocked_edges.remove(edge)
+        
+        # If this wall blocks the path or increases its length, use it
+        if new_path_length > current_path_length:
+            return (row, col, direction)
+    
+    # If no blocking wall found, fall back to random wall
+    return _random_wall(board)
