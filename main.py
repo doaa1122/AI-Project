@@ -33,37 +33,40 @@ def show_menu(screen):
     font_option = pygame.font.SysFont('Segoe UI', 26)
     font_small  = pygame.font.SysFont('Segoe UI', 18)
 
-    BG       = (30, 30, 40)
-    TITLE_C  = (240, 200, 100)
-    TEXT_C   = (240, 240, 240)
-    DIM_C    = (150, 150, 160)
-    BTN_C    = (50, 50, 70)
-    BTN_H    = (80, 80, 110)
-    BTN_A    = (80, 140, 220)
+    # Colors (R, G, B)
+    BG       = (30, 30, 40) # BG is background color
+    TITLE_C  = (240, 200, 100) # TITLE_C is title color
+    TEXT_C   = (240, 240, 240) # TEXT_C is text color
+    DIM_C    = (150, 150, 160) # DIM_C is dimmed text color
+    BTN_C    = (50, 50, 70) # BTN_C is button color
+    BTN_H    = (80, 80, 110) # BTN_H is button hover color
+    BTN_A    = (80, 140, 220) # BTN_A is button active color (not used in this menu but reserved for future use)
 
+    # List of buttons with their labels, return values, and rectangles for click detection
     buttons = [
-        {'label': '👥  Human vs Human',       'value': ('hvh', None),     'rect': pygame.Rect(WINDOW_W//2 - 180, 200, 360, 56)},
-        {'label': '🤖  Human vs AI (Easy)',    'value': ('hvc', 'easy'),   'rect': pygame.Rect(WINDOW_W//2 - 180, 278, 360, 56)},
-        {'label': '🧠  Human vs AI (Medium)',  'value': ('hvc', 'medium'), 'rect': pygame.Rect(WINDOW_W//2 - 180, 356, 360, 56)},
+        {'label': 'Human vs Human',       'value': ('hvh', None),     'rect': pygame.Rect(WINDOW_W//2 - 180, 220, 360, 56)},
+        {'label': 'Human vs AI (Easy)',    'value': ('hvc', 'easy'),   'rect': pygame.Rect(WINDOW_W//2 - 180, 298, 360, 56)},
+        {'label': 'Human vs AI (Medium)',  'value': ('hvc', 'medium'), 'rect': pygame.Rect(WINDOW_W//2 - 180, 376, 360, 56)},
     ]
 
-    clock = pygame.time.Clock()
+    clock = pygame.time.Clock() # Create a clock to control the frame rate of the menu loop
 
+    # Main menu loop
     while True:
         mouse_pos = pygame.mouse.get_pos()
         screen.fill(BG)
 
         # Title
         title = font_title.render("QUORIDOR", True, TITLE_C)
-        screen.blit(title, (WINDOW_W//2 - title.get_width()//2, 80))
+        screen.blit(title, (WINDOW_W//2 - title.get_width()//2, 80)) # blit used to draw the title on the screen at a centered position
 
         subtitle = font_small.render("Abstract Strategy Board Game", True, DIM_C)
-        screen.blit(subtitle, (WINDOW_W//2 - subtitle.get_width()//2, 132))
+        screen.blit(subtitle, (WINDOW_W//2 - subtitle.get_width()//2, 137))
 
-        pygame.draw.line(screen, (50, 50, 70), (WINDOW_W//2 - 180, 158), (WINDOW_W//2 + 180, 158), 1)
+        pygame.draw.line(screen, (50, 50, 70), (WINDOW_W//2 - 180, 163), (WINDOW_W//2 + 180, 163), 1)
 
         choose_lbl = font_option.render("Select Game Mode", True, TEXT_C)
-        screen.blit(choose_lbl, (WINDOW_W//2 - choose_lbl.get_width()//2, 168))
+        screen.blit(choose_lbl, (WINDOW_W//2 - choose_lbl.get_width()//2, 173))
 
         # Draw buttons
         for btn in buttons:
@@ -77,16 +80,17 @@ def show_menu(screen):
 
         # Footer note
         note = font_small.render("You play as Player 1 (Red) | AI plays as Player 2 (Blue)", True, DIM_C)
-        screen.blit(note, (WINDOW_W//2 - note.get_width()//2, 440))
+        screen.blit(note, (WINDOW_W//2 - note.get_width()//2, 450))
 
-        pygame.display.flip()
-        clock.tick(60)
+        pygame.display.flip() # Update the display with all the drawn elements
+        clock.tick(60) # Limit the menu loop to 60 frames per second
 
+        # Event handling for menu
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1: # event.button == 1 checks for LEFT mouse button click
                 for btn in buttons:
                     if btn['rect'].collidepoint(event.pos):
                         return btn['value']
@@ -117,13 +121,13 @@ def run_game(screen, game_mode, ai_difficulty):
 
     running = True
     while running:
-        mouse_pos = pygame.mouse.get_pos()
-        current_time = pygame.time.get_ticks()
+        mouse_pos = pygame.mouse.get_pos() # always check mouse position
+        current_time = pygame.time.get_ticks() # for AI thinking delay.
 
         # ---------------------------------------------------------------
         # AI move logic
         # ---------------------------------------------------------------
-        if (game_mode == 'hvc' and board.current_turn == ai_turn
+        if (game_mode == 'hvc' and board.current_turn == ai_turn 
                 and not board.winner and not ai_thinking):
             # Start a short "thinking" delay so it doesn't feel instant
             ai_thinking = True
@@ -149,7 +153,8 @@ def run_game(screen, game_mode, ai_difficulty):
                 if game_mode == 'hvc' and board.current_turn == ai_turn:
                     continue
 
-                action = ui.get_button_action(mouse_pos)
+                # First check if a sidebar button was clicked, otherwise check for board clicks
+                action = ui.get_button_action(mouse_pos) # action will be None if no button was clicked, otherwise it will be a string like 'mode_move', 'orient_H', etc.
                 if action:
                     _handle_button(action, board, screen, game_mode, ai_difficulty)
                 elif ui.is_board_click(mouse_pos) and not board.winner:
@@ -216,8 +221,8 @@ def _handle_board_click(mouse_pos, board):
     - In 'wall' mode: try to place a wall at the clicked position.
     """
     if board.mode == 'move':
-        cell = pixel_to_cell(mouse_pos[0], mouse_pos[1])
-        if cell:
+        cell = pixel_to_cell(mouse_pos[0], mouse_pos[1]) # Convert pixel coordinates to board cell (row, col)
+        if cell: # If the click was within the board area and corresponds to a valid cell
             row, col = cell
             board.move_pawn(row, col)
 
@@ -236,10 +241,11 @@ def _do_ai_move(board, difficulty):
         move = get_medium_move(board)
 
     if move is None:
-        # Fallback: just switch turn (shouldn't normally happen)
+        # Fallback: just switch turn (Safety measure in case AI is implemented incorrectly)
         board.switch_turn()
         return
 
+    # expected move format: ('pawn', (row, col)) or ('wall', (row, col, direction))    
     move_type, data = move
 
     if move_type == 'pawn':

@@ -11,7 +11,7 @@ wall that completely blocks a player from reaching the other side.
 from collections import deque
 
 
-def bfs_has_path(board, start_row, start_col, goal_row, player_id):
+def bfs_has_path(board, start_row, start_col, goal_row):
     """
     Check if there is a valid path from (start_row, start_col)
     to any cell in goal_row using BFS.
@@ -21,7 +21,6 @@ def bfs_has_path(board, start_row, start_col, goal_row, player_id):
         start_row  - starting row of the pawn
         start_col  - starting column of the pawn
         goal_row   - the row the player needs to reach to win
-        player_id  - which player (1 or 2), not used for pathing but helpful for context
 
     Returns:
         True if a path exists, False otherwise.
@@ -64,9 +63,9 @@ def both_players_have_path(board):
     p2 = board.player2
 
     # Player 1 starts near row 8, needs to reach row 0
-    p1_can_reach = bfs_has_path(board, p1['row'], p1['col'], 0, 1)
+    p1_can_reach = bfs_has_path(board, p1['row'], p1['col'], 0)
 
     # Player 2 starts near row 0, needs to reach row 8
-    p2_can_reach = bfs_has_path(board, p2['row'], p2['col'], 8, 2)
+    p2_can_reach = bfs_has_path(board, p2['row'], p2['col'], 8)
 
     return p1_can_reach and p2_can_reach
